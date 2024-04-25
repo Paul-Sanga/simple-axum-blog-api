@@ -1,3 +1,5 @@
+mod config;
+mod database;
 mod routes;
 
 use routes::create_routes;
@@ -18,7 +20,7 @@ impl App {
         let listener = tokio::net::TcpListener::bind((self.address, self.port)).await;
         match listener {
             Ok(listener) => {
-                match axum::serve(listener, create_routes()).await {
+                match axum::serve(listener, create_routes().await).await {
                     Ok(_) => {
                         println!(
                             "\x1b[32m Blog API server running on: http:://{}:{} \x1b[0m",
