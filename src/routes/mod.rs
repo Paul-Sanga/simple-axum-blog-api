@@ -1,6 +1,6 @@
 mod blog_routes;
 
-use self::blog_routes::{create_blog, get_blog};
+use self::blog_routes::{create_blog, get_blog, get_all_blogs};
 use super::config::db_config::db_connetion_config;
 use axum::{
     http::Method,
@@ -26,6 +26,7 @@ pub async fn create_routes() -> Router {
     Router::new()
         .route("/blog", post(create_blog))
         .route("/blog/:id", get(get_blog))
+        .route("/blogs", get(get_all_blogs))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(Extension(db_connection))

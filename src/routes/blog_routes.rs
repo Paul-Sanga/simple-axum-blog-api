@@ -51,3 +51,8 @@ pub async fn get_blog(
         Err(StatusCode::BAD_REQUEST)
     }
 }
+
+
+pub async fn get_all_blogs(){
+    
+}
