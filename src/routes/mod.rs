@@ -1,6 +1,6 @@
 mod blog_routes;
 
-use self::blog_routes::{create_blog, get_blog, get_all_blogs};
+use self::blog_routes::{create_blog, get_all_blogs, get_blog};
 use super::config::db_config::db_connetion_config;
 use axum::{
     http::Method,

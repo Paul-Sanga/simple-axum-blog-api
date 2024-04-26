@@ -25,10 +25,10 @@ pub async fn create_blog(
 }
 
 #[derive(Serialize)]
-pub struct ResponseBlog{
+pub struct ResponseBlog {
     id: i32,
     title: String,
-    detail: String
+    detail: String,
 }
 
 pub async fn get_blog(
@@ -38,10 +38,10 @@ pub async fn get_blog(
     let blog = Blog::find_by_id(blog_id).one(&database_conection).await;
     if let Ok(blog) = blog {
         if let Some(blog) = blog {
-            let response_data = ResponseBlog{
+            let response_data = ResponseBlog {
                 id: blog.id,
                 title: blog.title,
-                detail: blog.details
+                detail: blog.details,
             };
             Ok(Json(response_data))
         } else {
@@ -52,7 +52,19 @@ pub async fn get_blog(
     }
 }
 
-
-pub async fn get_all_blogs(){
-    
+pub async fn get_all_blogs(
+    Extension(database_connection): Extension<DatabaseConnection>,
+) -> Result<Json<Vec<ResponseBlog>>, StatusCode> {
+    let blogs = Blog::find()
+        .all(&database_connection)
+        .await
+        .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?
+        .into_iter()
+        .map(|db_blog| ResponseBlog {
+            id: db_blog.id,
+            title: db_blog.title,
+            detail: db_blog.details,
+        })
+        .collect();
+    Ok(Json(blogs))
 }
