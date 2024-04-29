@@ -9,6 +9,7 @@ pub struct Model {
     pub id: i32,
     pub title: String,
     pub details: String,
+    pub category: Option<String>,
     pub created_at: Option<Date>,
     pub updated_at: Option<Date>,
 }
