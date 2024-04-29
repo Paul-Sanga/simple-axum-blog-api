@@ -4,7 +4,8 @@ use axum::{
     Extension, Json,
 };
 use sea_orm::{
-    prelude::Date, ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, Set
+    prelude::Date, ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait,
+    IntoActiveModel, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::filter;
@@ -171,15 +172,16 @@ pub async fn blog_partial_update(
     Json(request_blog): Json<RequestPartialUpdateBlog>,
 ) -> Result<(), StatusCode> {
     let mut db_blog = if let Some(blog) = Blog::find_by_id(blog_id)
-    .one(&database_connection)
-    .await
-    .map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?{
+        .one(&database_connection)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         blog.into_active_model()
-    }else{
+    } else {
         return Err(StatusCode::NOT_FOUND);
     };
 
-    if let Some(category) = request_blog.category{
+    if let Some(category) = request_blog.category {
         db_blog.category = Set(category);
     }
 
@@ -187,7 +189,29 @@ pub async fn blog_partial_update(
         .filter(blog::Column::Id.eq(blog_id))
         .exec(&database_connection)
         .await
-        .map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(())
+}
+
+pub async fn delete_blog(
+    Path(blog_id): Path<i32>,
+    Extension(database_connection): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    let blog = if let Some(blog) = Blog::find_by_id(blog_id)
+        .one(&database_connection)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        blog.into_active_model()
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    Blog::delete(blog)
+        .exec(&database_connection)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(())
 }
