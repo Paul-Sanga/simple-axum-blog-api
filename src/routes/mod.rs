@@ -1,10 +1,12 @@
 mod blog_routes;
 
-use self::blog_routes::{blog_atomic_update, create_blog, get_all_blogs, get_blog};
+use self::blog_routes::{
+    blog_atomic_update, blog_partial_update, create_blog, get_all_blogs, get_blog,
+};
 use super::config::db_config::db_connetion_config;
 use axum::{
     http::Method,
-    routing::{get, post, put},
+    routing::{get, patch, post, put},
     Extension, Router,
 };
 use tower_http::{
@@ -28,6 +30,7 @@ pub async fn create_routes() -> Router {
         .route("/blog/:id", get(get_blog))
         .route("/blogs", get(get_all_blogs))
         .route("/blog/:id", put(blog_atomic_update))
+        .route("/blog/:id", patch(blog_partial_update))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(Extension(db_connection))

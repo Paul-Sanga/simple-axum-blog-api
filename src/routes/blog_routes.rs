@@ -4,9 +4,10 @@ use axum::{
     Extension, Json,
 };
 use sea_orm::{
-    prelude::Date, ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, Set
+    prelude::Date, ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, Set
 };
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::filter;
 
 use crate::database::blog::{self, Entity as Blog};
 
@@ -97,8 +98,8 @@ pub async fn get_all_blogs(
 }
 
 #[derive(Deserialize)]
-pub struct RequestUpdateBlog{
-    pub id: i32,
+pub struct RequestUpdateBlog {
+    pub id: Option<i32>,
     pub title: String,
     pub details: String,
     pub category: Option<String>,
@@ -109,22 +110,84 @@ pub struct RequestUpdateBlog{
 pub async fn blog_atomic_update(
     Extension(database_connection): Extension<DatabaseConnection>,
     Path(blog_id): Path<i32>,
-    Json(request_blog): Json<RequestUpdateBlog>
+    Json(request_blog): Json<RequestUpdateBlog>,
 ) -> Result<(), StatusCode> {
-    let update_blog = blog::ActiveModel{
+    let update_blog = blog::ActiveModel {
         id: Set(blog_id),
         title: Set(request_blog.title),
         details: Set(request_blog.details),
         category: Set(request_blog.category),
         created_at: Set(request_blog.created_at),
-        updated_at: Set(request_blog.updated_at)
+        updated_at: Set(request_blog.updated_at),
     };
 
     Blog::update(update_blog)
-    .filter(blog::Column::Id.eq(blog_id))
-    .exec(&database_connection)
+        .filter(blog::Column::Id.eq(blog_id))
+        .exec(&database_connection)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+pub struct RequestPartialUpdateBlog {
+    pub id: Option<i32>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub title: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub details: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub category: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub created_at: Option<Option<Date>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub updated_at: Option<Option<Date>>,
+}
+
+pub async fn blog_partial_update(
+    Extension(database_connection): Extension<DatabaseConnection>,
+    Path(blog_id): Path<i32>,
+    Json(request_blog): Json<RequestPartialUpdateBlog>,
+) -> Result<(), StatusCode> {
+    let mut db_blog = if let Some(blog) = Blog::find_by_id(blog_id)
+    .one(&database_connection)
     .await
-    .map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?{
+        blog.into_active_model()
+    }else{
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    if let Some(category) = request_blog.category{
+        db_blog.category = Set(category);
+    }
+
+    Blog::update(db_blog)
+        .filter(blog::Column::Id.eq(blog_id))
+        .exec(&database_connection)
+        .await
+        .map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(())
 }
